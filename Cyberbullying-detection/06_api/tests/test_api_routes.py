@@ -9,9 +9,10 @@ from unittest.mock import patch, MagicMock
 # Import app
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add 'Cyberbullying-detection' dir to sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from main import app
+from 06_api.main import app
 
 client = TestClient(app)
 
