@@ -1,0 +1,47 @@
+# Python caches and bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+venv/
+.env/
+.venv/
+
+# Testing and notebooks
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Editors/OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Logs and coverage
+*.log
+.coverage
+
+# Node-related (dashboard)
+08_dashboard/node_modules/
+
+# Large data/models and logs (avoid GitHub 100MB limits)
+00_data/raw/
+00_data/processed/
+00_data/anonymized/
+02_feature_extraction/embeddings/
+03_models/saved_models/
+17_logs/
+*.bin
+*.pt
+*.pkl
+*.pickle
+*.model
+*.tar
+*.gz
+*.zip
+local.db
