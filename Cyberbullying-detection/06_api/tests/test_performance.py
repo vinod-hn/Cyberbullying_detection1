@@ -12,7 +12,10 @@ from pathlib import Path
 # Add 'Cyberbullying-detection' dir to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from 06_api.main import app
+import importlib
+# Load app via importlib because package folder starts with a digit
+main = importlib.import_module("06_api.main")
+app = getattr(main, "app")
 
 client = TestClient(app)
 

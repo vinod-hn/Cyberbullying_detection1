@@ -7,12 +7,11 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 
 # Import app
-import sys
-from pathlib import Path
-# Add 'Cyberbullying-detection' dir to sys.path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import importlib
 
-from 06_api.main import app
+# Load the FastAPI app via importlib to preserve package context
+main = importlib.import_module("06_api.main")
+app = getattr(main, "app")
 
 client = TestClient(app)
 
