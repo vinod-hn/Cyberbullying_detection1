@@ -29,19 +29,11 @@ dist/
 # Node-related (dashboard)
 08_dashboard/node_modules/
 
-# Large data/models and logs (avoid GitHub 100MB limits)
-00_data/raw/
-00_data/processed/
-00_data/anonymized/
-02_feature_extraction/embeddings/
-03_models/saved_models/
+# Logs and local dev artifacts
 17_logs/
-*.bin
-*.pt
-*.pkl
-*.pickle
-*.model
+local.db
+
+# Archives generated locally (optional)
 *.tar
 *.gz
 *.zip
-local.db

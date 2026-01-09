@@ -1,3 +1,24 @@
-# Track large model artifacts with Git LFS
+# Track large artifacts with Git LFS
+
+# Models
 03_models/saved_models/* filter=lfs diff=lfs merge=lfs -text
 03_models/saved_models/** filter=lfs diff=lfs merge=lfs -text
+*.bin filter=lfs diff=lfs merge=lfs -text
+*.pt filter=lfs diff=lfs merge=lfs -text
+*.pkl filter=lfs diff=lfs merge=lfs -text
+*.pickle filter=lfs diff=lfs merge=lfs -text
+*.model filter=lfs diff=lfs merge=lfs -text
+
+# Embeddings
+02_feature_extraction/embeddings/* filter=lfs diff=lfs merge=lfs -text
+02_feature_extraction/embeddings/** filter=lfs diff=lfs merge=lfs -text
+
+# Datasets (CSV and JSON can be large)
+00_data/raw/* filter=lfs diff=lfs merge=lfs -text
+00_data/raw/** filter=lfs diff=lfs merge=lfs -text
+00_data/processed/* filter=lfs diff=lfs merge=lfs -text
+00_data/processed/** filter=lfs diff=lfs merge=lfs -text
+00_data/anonymized/* filter=lfs diff=lfs merge=lfs -text
+00_data/anonymized/** filter=lfs diff=lfs merge=lfs -text
+*.csv filter=lfs diff=lfs merge=lfs -text
+*.json filter=lfs diff=lfs merge=lfs -text
