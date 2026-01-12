@@ -6,12 +6,17 @@ GET /stats
 from fastapi import APIRouter, HTTPException, Query
 from datetime import datetime, timedelta
 from typing import Optional
+import logging
 
-from ..schemas import StatisticsResponse
+try:
+    from ..schemas import StatisticsResponse
+except ImportError:
+    from schemas import StatisticsResponse
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
-# In-memory stats store (replace with database in production)
+# In-memory stats store (fallback if database unavailable)
 _stats_store = {
     "total_predictions": 0,
     "cyberbullying_count": 0,
@@ -21,6 +26,43 @@ _stats_store = {
     "daily_counts": [],
     "model_usage": {"bert": 0, "mbert": 0, "indicbert": 0, "baseline": 0}
 }
+
+
+def get_stats_from_db(days: int = 7) -> Optional[dict]:
+    """Get statistics from database."""
+    try:
+        from ..db_helper import get_db_context, get_prediction_repository, get_feedback_repository
+        
+        ctx = get_db_context()
+        if ctx is None:
+            return None
+            
+        with ctx as db:
+            pred_repo = get_prediction_repository(db)
+            if not pred_repo:
+                return None
+                
+            stats = pred_repo.get_stats(days=days)
+            
+            # Get feedback stats
+            feedback_repo = get_feedback_repository(db)
+            accuracy = {}
+            if feedback_repo:
+                accuracy = feedback_repo.get_accuracy_stats()
+            
+            return {
+                "total_predictions": stats["total_predictions"],
+                "cyberbullying_count": stats["bullying_predictions"],
+                "not_cyberbullying_count": stats["neutral_predictions"],
+                "label_distribution": stats["label_distribution"],
+                "model_usage": stats["model_distribution"],
+                "daily_stats": stats["daily_stats"],
+                "average_confidence": stats["average_confidence"],
+                "feedback_accuracy": accuracy.get("accuracy_percentage")
+            }
+    except Exception as e:
+        logger.warning(f"Failed to get stats from database: {e}")
+        return None
 
 
 def update_stats(prediction_result: dict, model_type: str = "bert"):
@@ -54,7 +96,43 @@ async def get_statistics(
     - Model usage breakdown
     """
     try:
-        # Generate sample daily counts if empty
+        # Try database first
+        db_stats = get_stats_from_db(days=days)
+        
+        if db_stats:
+            # Format daily counts for response
+            daily_counts = [
+                {
+                    "date": d["date"],
+                    "predictions": d["total"],
+                    "cyberbullying": d["bullying"]
+                }
+                for d in db_stats.get("daily_stats", [])
+            ]
+            
+            # If no daily data, generate empty structure
+            if not daily_counts:
+                today = datetime.now()
+                daily_counts = [
+                    {
+                        "date": (today - timedelta(days=i)).strftime("%Y-%m-%d"),
+                        "predictions": 0,
+                        "cyberbullying": 0
+                    }
+                    for i in range(days - 1, -1, -1)
+                ]
+            
+            return StatisticsResponse(
+                total_predictions=db_stats["total_predictions"],
+                cyberbullying_count=db_stats["cyberbullying_count"],
+                not_cyberbullying_count=db_stats["not_cyberbullying_count"],
+                severity_distribution=_stats_store["severity_distribution"],  # Not tracked in DB yet
+                language_distribution=_stats_store["language_distribution"],  # Not tracked in DB yet
+                daily_counts=daily_counts,
+                model_usage=db_stats.get("model_usage", _stats_store["model_usage"])
+            )
+        
+        # Fallback to in-memory stats
         if not _stats_store["daily_counts"]:
             today = datetime.now()
             _stats_store["daily_counts"] = [

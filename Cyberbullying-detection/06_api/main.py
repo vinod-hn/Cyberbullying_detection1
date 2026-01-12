@@ -10,9 +10,13 @@ Or directly:
 
 import sys
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 # Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+api_dir = Path(__file__).parent
+project_dir = api_dir.parent
+sys.path.insert(0, str(project_dir))
+sys.path.insert(0, str(api_dir))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,9 +24,15 @@ from fastapi.responses import Response
 import base64
 import logging
 
-from .app_config import settings
-from .routes import api_router
-from .middleware import LoggingMiddleware, AuthMiddleware, setup_exception_handlers
+# Handle both relative and absolute imports
+try:
+    from .app_config import settings
+    from .routes import api_router
+    from .middleware import LoggingMiddleware, AuthMiddleware, setup_exception_handlers
+except ImportError:
+    from app_config import settings
+    from routes import api_router
+    from middleware import LoggingMiddleware, AuthMiddleware, setup_exception_handlers
 
 # Setup logging
 logging.basicConfig(
@@ -31,6 +41,38 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S"
 )
 logger = logging.getLogger(__name__)
+
+
+# Lifespan context manager for startup/shutdown events
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan handler for startup and shutdown events."""
+    # Startup
+    logger.info(f"Starting {settings.app_name} v{settings.app_version}")
+    logger.info(f"Documentation available at: http://{settings.host}:{settings.port}/docs")
+    logger.info(f"Health check at: http://{settings.host}:{settings.port}/health")
+    
+    # Initialize database
+    try:
+        try:
+            from .db_helper import init_db, get_db_info
+        except ImportError:
+            from db_helper import init_db, get_db_info
+        init_db()
+        db_info = get_db_info()
+        logger.info(f"Database initialized: {db_info.get('database_path', 'N/A')}")
+    except Exception as e:
+        logger.warning(f"Database initialization skipped: {e}")
+    
+    yield
+    # Shutdown
+    logger.info("Shutting down API...")
+    try:
+        from .models_loader import clear_model_cache
+    except ImportError:
+        from models_loader import clear_model_cache
+    clear_model_cache()
+
 
 # Create FastAPI application
 app = FastAPI(
@@ -45,10 +87,10 @@ app = FastAPI(
     - Confidence scores and probabilities
     - Support for Kannada-English code-mixed text
     
-    ## Models Performance
-    - **BERT**: 99.88% F1 Score (Best)
-    - **mBERT**: 99.57% F1 Score (Multilingual)
-    - **IndicBERT**: 99.76% F1 Score (Indian Languages)
+    ## Models Performance (Updated: Colab Training)
+    - **BERT**: 100.00% F1 Score (Best - Perfect on test set)
+    - **mBERT**: 99.86% F1 Score (Multilingual)
+    - **IndicBERT**: 99.93% F1 Score (Indian Languages)
     - **Baseline**: ~95% F1 Score (Fastest)
     
     ## Authentication
@@ -58,7 +100,8 @@ app = FastAPI(
     version=settings.app_version,
     docs_url="/docs",
     redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    openapi_url="/openapi.json",
+    lifespan=lifespan
 )
 
 # Setup CORS
@@ -116,22 +159,6 @@ async def favicon():
         content=base64.b64decode(FAVICON_PNG_BASE64),
         media_type="image/png"
     )
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Application startup tasks."""
-    logger.info(f"Starting {settings.app_name} v{settings.app_version}")
-    logger.info(f"Documentation available at: http://{settings.host}:{settings.port}/docs")
-    logger.info(f"Health check at: http://{settings.host}:{settings.port}/health")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Application shutdown tasks."""
-    logger.info("Shutting down API...")
-    from .models_loader import clear_model_cache
-    clear_model_cache()
 
 
 # CLI entry point

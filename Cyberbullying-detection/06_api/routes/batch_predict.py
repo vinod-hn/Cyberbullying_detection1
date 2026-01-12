@@ -7,8 +7,12 @@ from fastapi import APIRouter, HTTPException
 import time
 import uuid
 
-from ..schemas import BatchPredictionRequest, BatchPredictionResponse, PredictionResponse
-from ..models_loader import get_detector
+try:
+    from ..schemas import BatchPredictionRequest, BatchPredictionResponse, PredictionResponse
+    from ..models_loader import get_detector
+except ImportError:
+    from schemas import BatchPredictionRequest, BatchPredictionResponse, PredictionResponse
+    from models_loader import get_detector
 
 router = APIRouter()
 

@@ -4,14 +4,16 @@
 
 **You don't need to train any models.** All models have been trained on Google Colab and are ready for inference.
 
-### Trained Models Performance
+### Trained Models Performance (Updated: Colab Training with 80/20 Split)
 
-| Model | Accuracy | F1 Score | Best For |
-|-------|----------|----------|----------|
-| **BERT** | 99.88% | 99.88% | Best overall performance |
-| **IndicBERT** | 99.76% | 99.76% | Indian languages (Kannada) |
-| **mBERT** | 99.57% | 99.57% | Code-mixed text |
+| Model | Test Accuracy | Test F1 Score | Best For |
+|-------|---------------|---------------|----------|
+| **BERT** | 100.00% | 100.00% | Best overall performance |
+| **IndicBERT** | 99.93% | 99.93% | Indian languages (Kannada) |
+| **mBERT** | 99.86% | 99.86% | Code-mixed text |
 | **Baseline (TF-IDF)** | ~95% | ~95% | Fast inference, no GPU |
+
+**Training Configuration**: 7,000 samples, 80% train / 20% test, reproducible seed (42)
 
 ---
 
@@ -45,11 +47,11 @@ print(result)
 ### Step 3: Run the API
 
 ```bash
-cd 06_api
-python api.py
+# From repo root
+uvicorn 06_api.main:app --host 127.0.0.1 --port 8000 --app-dir Cyberbullying-detection
 ```
 
-Then open http://localhost:8000/docs for interactive API documentation.
+Then open http://127.0.0.1:8000/docs for interactive API documentation.
 
 ---
 

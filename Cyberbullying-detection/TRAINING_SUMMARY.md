@@ -247,7 +247,14 @@ python train_models.py --type baseline --model all --tune
 
 ## Performance Expectations
 
-Based on initial Naive Bayes results, we can expect:
+Based on Colab training with 80/20 split on 7000 samples:
+
+### Transformer Models (Trained in Google Colab with GPU)
+| Model | Test Accuracy | Test F1 (Weighted) | Train Accuracy |
+|-------|---------------|-------------------|----------------|
+| BERT | 100.00% ✓ | 100.00% ✓ | 99.84% |
+| mBERT | 99.86% ✓ | 99.86% ✓ | 99.70% |
+| IndicBERT | 99.93% ✓ | 99.93% ✓ | 99.76% |
 
 ### Baseline Models
 | Model | Expected Accuracy | Expected F1 (Weighted) |
@@ -256,14 +263,12 @@ Based on initial Naive Bayes results, we can expect:
 | SVM | 99.0-99.8% | 99.0-99.8% |
 | TF-IDF+LogReg | 99.0-99.8% | 99.0-99.8% |
 
-### Context-Aware Models (if trained)
-| Model | Expected Accuracy | Expected F1 (Weighted) |
-|-------|------------------|------------------------|
-| LSTM | 98.5-99.5% | 98.5-99.5% |
-| BiLSTM | 98.8-99.6% | 98.8-99.6% |
-| Transformer | 99.0-99.7% | 99.0-99.7% |
-
-**Note**: These are optimistic estimates based on initial results. Actual performance on the test set may vary.
+### Training Configuration
+- **Total Samples**: 7,000
+- **Training Set**: 5,600 (80%)
+- **Test Set**: 1,400 (20%)
+- **Random Seed**: 42 (reproducible)
+- **Stratified Split**: Yes (maintains label distribution)
 
 ---
 
@@ -284,15 +289,21 @@ Based on initial Naive Bayes results, we can expect:
 
 ✅ **First Model Trained**: Naive Bayes achieved 99.82% validation accuracy
 
+✅ **Transformer Models Trained**: BERT, mBERT, IndicBERT trained in Google Colab
+
+✅ **Best Model**: BERT with 100% test accuracy and F1 score
+
 ✅ **Training Infrastructure Working**: Unified training script operational
 
 ✅ **Class Imbalance Handled**: ComplementNB and class weights implemented
 
-✅ **Fast Training**: 6 seconds for baseline model
+✅ **Fast Training**: GPU-accelerated training in Colab
 
-✅ **Reproducible**: Models saved and can be reloaded
+✅ **Reproducible**: Models saved and can be reloaded (random seed: 42)
 
 ✅ **Well Documented**: Quick start guide and this summary available
+
+✅ **Models Deployed**: All transformer models saved to `03_models/saved_models/`
 
 ---
 

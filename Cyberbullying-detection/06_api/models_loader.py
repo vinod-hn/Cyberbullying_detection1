@@ -19,22 +19,28 @@ sys.path.insert(0, str(PROJECT_ROOT / "03_models"))
 # Model cache
 _model_cache: Dict[str, Any] = {}
 
-# Model performance metrics (from training)
+# Model performance metrics (from Colab training - 80/20 split on 7000 samples)
 MODEL_METRICS = {
     "bert": {
-        "accuracy": 0.9988,
-        "f1": 0.9988,
-        "description": "BERT base classifier - Best overall performance"
+        "accuracy": 1.0,
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "description": "BERT base classifier - Perfect performance on test set"
     },
     "mbert": {
-        "accuracy": 0.9957,
-        "f1": 0.9957,
-        "description": "Multilingual BERT - Good for cross-language texts"
+        "accuracy": 0.9986,
+        "f1": 0.9986,
+        "precision": 0.9986,
+        "recall": 0.9986,
+        "description": "Multilingual BERT - Excellent for code-mixed text"
     },
     "indicbert": {
-        "accuracy": 0.9976,
-        "f1": 0.9976,
-        "description": "IndicBERT - Optimized for Indian languages"
+        "accuracy": 0.9993,
+        "f1": 0.9993,
+        "precision": 0.9993,
+        "recall": 0.9993,
+        "description": "IndicBERT/MuRIL - Optimized for Indian languages"
     },
     "baseline": {
         "accuracy": 0.9500,

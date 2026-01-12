@@ -10,7 +10,10 @@ import hashlib
 import secrets
 from typing import Optional
 
-from ..schemas import LoginRequest, TokenResponse
+try:
+    from ..schemas import LoginRequest, TokenResponse
+except ImportError:
+    from schemas import LoginRequest, TokenResponse
 
 router = APIRouter()
 security = HTTPBearer(auto_error=False)

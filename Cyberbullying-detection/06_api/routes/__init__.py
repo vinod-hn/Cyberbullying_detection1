@@ -4,13 +4,22 @@ API Routes package.
 
 from fastapi import APIRouter
 
-from .predict import router as predict_router
-from .batch_predict import router as batch_predict_router
-from .conversation_predict import router as conversation_router
-from .statistics import router as statistics_router
-from .health import router as health_router
-from .feedback import router as feedback_router
-from .auth import router as auth_router
+try:
+    from .predict import router as predict_router
+    from .batch_predict import router as batch_predict_router
+    from .conversation_predict import router as conversation_router
+    from .statistics import router as statistics_router
+    from .health import router as health_router
+    from .feedback import router as feedback_router
+    from .auth import router as auth_router
+except ImportError:
+    from predict import router as predict_router
+    from batch_predict import router as batch_predict_router
+    from conversation_predict import router as conversation_router
+    from statistics import router as statistics_router
+    from health import router as health_router
+    from feedback import router as feedback_router
+    from auth import router as auth_router
 
 # Main API router that includes all sub-routers
 api_router = APIRouter()

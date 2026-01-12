@@ -73,10 +73,10 @@ class CyberbullyingDetector:
     
     Loads pre-trained models and provides inference methods.
     
-    Model Types:
-        - 'bert': BERT base uncased (best performance: 99.88% F1)
-        - 'mbert': Multilingual BERT (good for code-mixed text: 99.57% F1)
-        - 'indicbert': IndicBERT/MuRIL (optimized for Indian languages: 99.76% F1)
+    Model Types (trained on 7000 samples, 80/20 split):
+        - 'bert': BERT base uncased (best performance: 100% F1, 100% Accuracy)
+        - 'mbert': Multilingual BERT (good for code-mixed text: 99.86% F1)
+        - 'indicbert': IndicBERT/MuRIL (optimized for Indian languages: 99.93% F1)
         - 'baseline': TF-IDF + Best baseline model (SVM/LogReg/NB)
     
     Example:
@@ -85,11 +85,11 @@ class CyberbullyingDetector:
         >>> print(result['prediction'], result['confidence'])
     """
     
-    # Model performance from training
+    # Model performance from training (Updated: Colab Training 80/20 split on 7000 samples)
     MODEL_PERFORMANCE = {
-        'bert': {'accuracy': 0.9988, 'f1': 0.9988},
-        'mbert': {'accuracy': 0.9957, 'f1': 0.9957},
-        'indicbert': {'accuracy': 0.9976, 'f1': 0.9976},
+        'bert': {'accuracy': 1.0, 'f1': 1.0, 'precision': 1.0, 'recall': 1.0},
+        'mbert': {'accuracy': 0.9986, 'f1': 0.9986, 'precision': 0.9986, 'recall': 0.9986},
+        'indicbert': {'accuracy': 0.9993, 'f1': 0.9993, 'precision': 0.9993, 'recall': 0.9993},
         'baseline': {'accuracy': 0.95, 'f1': 0.95}  # Approximate
     }
     
@@ -197,12 +197,15 @@ class CyberbullyingDetector:
         
         logger.info(f"Transformer model loaded from {model_path}")
         
-        # Load test metrics if available
-        metrics_path = model_path / 'test_metrics.json'
-        if metrics_path.exists():
-            with open(metrics_path, 'r') as f:
-                self.test_metrics = json.load(f)
-            logger.info(f"Model metrics: {self.test_metrics}")
+        # Load metrics if available (check both metrics.json and test_metrics.json)
+        self.test_metrics = None
+        for metrics_filename in ['metrics.json', 'test_metrics.json']:
+            metrics_path = model_path / metrics_filename
+            if metrics_path.exists():
+                with open(metrics_path, 'r') as f:
+                    self.test_metrics = json.load(f)
+                logger.info(f"Model metrics loaded from {metrics_filename}: {self.test_metrics}")
+                break
     
     @staticmethod
     def preprocess_text(text: str) -> str:
@@ -271,9 +274,11 @@ class CyberbullyingDetector:
             results = self._predict_transformer(processed_texts, return_probabilities)
         
         # Add original texts and boolean flag
+        # "neutral" class means NOT cyberbullying, all other classes are cyberbullying types
+        NON_CYBERBULLYING_LABELS = {'neutral', 'not_cyberbullying', 'Not Cyberbullying', 'safe', 'none'}
         for i, result in enumerate(results):
             result['text'] = texts[i]
-            result['is_cyberbullying'] = result['prediction'] != 'Not Cyberbullying'
+            result['is_cyberbullying'] = result['prediction'].lower() not in {label.lower() for label in NON_CYBERBULLYING_LABELS}
         
         return results[0] if single_input else results
     

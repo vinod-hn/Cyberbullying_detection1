@@ -37,3 +37,13 @@ local.db
 *.tar
 *.gz
 *.zip
+
+# Large model artifacts (keep models out of VCS)
+03_models/saved_models/
+*.safetensors
+tokenizer.json
+vocab.txt
+special_tokens_map.json
+config.json
+metrics.json
+test_metrics.json

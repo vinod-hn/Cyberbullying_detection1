@@ -2,7 +2,7 @@
 Application configuration for Cyberbullying Detection API.
 """
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Optional
 from pathlib import Path
 import os
@@ -10,6 +10,12 @@ import os
 
 class Settings(BaseSettings):
     """API Configuration settings."""
+    
+    model_config = SettingsConfigDict(
+        env_prefix="CYBERBULLYING_",
+        env_file=".env",
+        env_file_encoding="utf-8"
+    )
     
     # Application
     app_name: str = "Cyberbullying Detection API"
@@ -48,11 +54,6 @@ class Settings(BaseSettings):
     
     # Local config flag
     local_config: bool = True  # True for local development
-    
-    class Config:
-        env_prefix = "CYBERBULLYING_"
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 
 # Global settings instance

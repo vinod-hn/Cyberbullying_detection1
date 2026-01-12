@@ -2,6 +2,14 @@
 API route tests for Cyberbullying Detection API.
 """
 
+import sys
+from pathlib import Path
+
+# Add project root to path to ensure 06_api module can be imported
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, str(PROJECT_ROOT / "03_models"))
+
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock

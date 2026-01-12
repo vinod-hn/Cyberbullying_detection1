@@ -6,10 +6,33 @@ GET /health
 from fastapi import APIRouter
 from datetime import datetime
 
-from ..schemas import HealthResponse, ModelInfo
-from ..models_loader import list_available_models
+try:
+    from ..schemas import HealthResponse, ModelInfo
+    from ..models_loader import list_available_models
+except ImportError:
+    from schemas import HealthResponse, ModelInfo
+    from models_loader import list_available_models
 
 router = APIRouter()
+
+
+def get_database_status() -> dict:
+    """Get database status information."""
+    try:
+        from ..db_helper import get_db_info
+        info = get_db_info()
+        return {
+            "connected": info.get("exists", False),
+            "type": info.get("database_type", "unknown"),
+            "path": info.get("database_path", "N/A"),
+            "size_bytes": info.get("size_bytes", 0)
+        }
+    except Exception as e:
+        return {
+            "connected": False,
+            "type": "unknown",
+            "error": str(e)
+        }
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -28,6 +51,34 @@ async def health_check():
         default_model="bert",
         version="1.0.0"
     )
+
+
+@router.get("/health/detailed")
+async def health_check_detailed():
+    """
+    Get detailed health status including database and model information.
+    """
+    available_models = list_available_models()
+    db_status = get_database_status()
+    
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "api_version": "1.0.0",
+        "database": db_status,
+        "models": {
+            "available": list(available_models.keys()),
+            "default": "bert",
+            "count": len(available_models)
+        },
+        "features": {
+            "single_prediction": True,
+            "batch_prediction": True,
+            "conversation_analysis": True,
+            "feedback_collection": True,
+            "statistics": True
+        }
+    }
 
 
 @router.get("/models", response_model=dict)

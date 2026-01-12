@@ -7,12 +7,20 @@ from fastapi import APIRouter, HTTPException
 import time
 from typing import List
 
-from ..schemas import (
-    ConversationPredictionRequest,
-    ConversationPredictionResponse,
-    ConversationMessageResult,
-)
-from ..models_loader import get_detector
+try:
+    from ..schemas import (
+        ConversationPredictionRequest,
+        ConversationPredictionResponse,
+        ConversationMessageResult,
+    )
+    from ..models_loader import get_detector
+except ImportError:
+    from schemas import (
+        ConversationPredictionRequest,
+        ConversationPredictionResponse,
+        ConversationMessageResult,
+    )
+    from models_loader import get_detector
 
 router = APIRouter()
 

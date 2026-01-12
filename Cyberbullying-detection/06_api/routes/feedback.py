@@ -7,13 +7,49 @@ from fastapi import APIRouter, HTTPException
 import uuid
 from datetime import datetime
 from typing import List
+import logging
 
-from ..schemas import FeedbackRequest, FeedbackResponse
+try:
+    from ..schemas import FeedbackRequest, FeedbackResponse
+except ImportError:
+    from schemas import FeedbackRequest, FeedbackResponse
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
-# In-memory feedback store (replace with database in production)
+# In-memory feedback store (fallback if database unavailable)
 _feedback_store: List[dict] = []
+
+
+def save_feedback_to_db(
+    prediction_id: str,
+    is_correct: bool,
+    correct_label: str = None,
+    comments: str = None
+) -> str:
+    """Save feedback to database. Returns feedback_id or None."""
+    try:
+        from ..db_helper import get_db_context, get_feedback_repository
+        
+        ctx = get_db_context()
+        if ctx is None:
+            return None
+        
+        with ctx as db:
+            repo = get_feedback_repository(db)
+            if repo:
+                feedback = repo.create(
+                    prediction_id=prediction_id,
+                    is_correct=is_correct,
+                    correct_label=correct_label,
+                    comments=comments
+                )
+                logger.info(f"Feedback saved to database: {feedback.feedback_id}")
+                return feedback.feedback_id
+        return None
+    except Exception as e:
+        logger.warning(f"Failed to save feedback to database: {e}")
+        return None
 
 
 @router.post("/feedback", response_model=FeedbackResponse)
@@ -36,17 +72,28 @@ async def submit_feedback(request: FeedbackRequest):
                 detail=f"Invalid label. Must be one of: {valid_labels}"
             )
         
-        feedback_id = str(uuid.uuid4())
+        # Determine if prediction was correct
+        is_correct = request.correct_label.lower() == "not_cyberbullying"
         
-        # Store feedback
-        feedback_entry = {
-            "feedback_id": feedback_id,
-            "prediction_id": request.prediction_id,
-            "correct_label": request.correct_label.lower(),
-            "comments": request.comments,
-            "timestamp": datetime.now().isoformat(),
-        }
-        _feedback_store.append(feedback_entry)
+        # Try to save to database first
+        feedback_id = save_feedback_to_db(
+            prediction_id=request.prediction_id,
+            is_correct=is_correct,
+            correct_label=request.correct_label.lower(),
+            comments=request.comments
+        )
+        
+        # Fallback to in-memory store if database fails
+        if not feedback_id:
+            feedback_id = str(uuid.uuid4())
+            feedback_entry = {
+                "feedback_id": feedback_id,
+                "prediction_id": request.prediction_id,
+                "correct_label": request.correct_label.lower(),
+                "comments": request.comments,
+                "timestamp": datetime.now().isoformat(),
+            }
+            _feedback_store.append(feedback_entry)
         
         return FeedbackResponse(
             success=True,
