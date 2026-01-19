@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyberbullying Detection Dashboard</title>
+    <meta name="description" content="Multilingual NLP Model for Automated Identification of Cyberbullying in Kannada-English Code-Mixed Student Chats">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/graphs.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+    
+    <!-- Inline styles for dropdown and new elements -->
+    <style>
+        /* Export dropdown styles */
+        .export-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 1000;
+            min-width: 160px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            margin-top: 4px;
+        }
+        .dropdown-item {
+            display: block;
+            width: 100%;
+            padding: 10px 15px;
+            border: none;
+            background: none;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .dropdown-item:hover {
+            background: #f0f0f0;
+        }
+        .hidden {
+            display: none !important;
+        }
+        /* Toast notification */
+        .toast-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            z-index: 9999;
+        }
+        .toast-notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        /* Highlight column in preview */
+        .highlight-col {
+            background: #e3f2fd !important;
+        }
+        
+        /* History Dropdown Styles */
+        .history-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .history-item {
+            display: flex;
+            flex-direction: column;
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .history-item:hover {
+            background: #f5f8ff;
+        }
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        .history-filename {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+        .history-date {
+            font-size: 11px;
+            color: #888;
+        }
+        .history-stats {
+            display: flex;
+            gap: 12px;
+            font-size: 12px;
+            color: #666;
+        }
+        .history-stat {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .stat-cb {
+            color: #e74c3c;
+        }
+        .stat-safe {
+            color: #27ae60;
+        }
+        .history-empty {
+            padding: 30px 20px;
+            text-align: center;
+            color: #888;
+        }
+        .history-empty-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        /* Intervention card improvements */
+        .intervention-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .intervention-stat-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+        }
+        .intervention-stat-value {
+            font-weight: 600;
+        }
+        .intervention-stat-value.danger { color: #e74c3c; }
+        .intervention-stat-value.warning { color: #f39c12; }
+        .intervention-stat-value.safe { color: #27ae60; }
+        
+        /* Alert banner animation */
+        .alert-banner {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        /* Modal Improvements */
+        .detail-row-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .detail-item .detail-label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 500;
+        }
+        .detail-item .detail-value {
+            font-size: 14px;
+            color: #333;
+            font-weight: 600;
+        }
+        .message-full {
+            background: #f8f9fa;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+        }
+        .explanation-text {
+            background: #fff8e6;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border-left: 4px solid #f39c12;
+            font-size: 13px;
+            color: #666;
+            font-style: italic;
+        }
+        .confidence-badge {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+        .modal-content {
+            max-width: 560px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Offline Banner -->
+        <div id="offline-banner" class="offline-banner hidden">
+            <span class="offline-icon">⚠️</span>
+            <span>Backend unavailable — showing demo data</span>
+        </div>
+
+        <!-- Header -->
+        <header class="main-header">
+            <h1 class="header-title">Multilingual NLP Model for Automated Identification of Cyberbullying in Kannada–English Code-Mixed Student Chats</h1>
+        </header>
+
+        <!-- Controls Row -->
+        <section class="controls-row">
+            <div class="controls-left">
+                <!-- CSV Upload Button - Renamed -->
+                <button id="upload-csv-btn" class="btn btn-success">
+                    <span class="upload-icon">📁</span> Upload Chat File
+                </button>
+                
+                <div class="date-picker">
+                    <label class="date-label">
+                        <span class="calendar-icon">📅</span>
+                        <input type="date" id="start-date" value="2024-01-01">
+                    </label>
+                    <span class="date-separator">→</span>
+                    <label class="date-label">
+                        <span class="calendar-icon">📅</span>
+                        <input type="date" id="end-date" value="2024-04-24">
+                    </label>
+                </div>
+                
+                <div class="filter-group">
+                    <select id="platform-filter" class="filter-select">
+                        <option value="">🔗 801st</option>
+                        <option value="whatsapp">WhatsApp</option>
+                        <option value="telegram">Telegram</option>
+                        <option value="classroom">Classroom Chat</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <select id="severity-all" class="filter-select">
+                        <option value="">All</option>
+                        <option value="insult">Insult</option>
+                        <option value="threat">Threat</option>
+                        <option value="harassment">Harassment</option>
+                        <option value="neutral">Neutral</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <select id="severity-filter" class="filter-select">
+                        <option value="">Severity</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                </div>
+                
+                <!-- NEW: Confidence Score Filter -->
+                <div class="filter-group">
+                    <select id="confidence-filter" class="filter-select">
+                        <option value="">Confidence Score</option>
+                        <option value="0-30">0% - 30%</option>
+                        <option value="30-60">30% - 60%</option>
+                        <option value="60-100">60% - 100%</option>
+                    </select>
+                </div>
+                
+                <button id="apply-filters" class="btn btn-primary">Apply</button>
+                
+                <!-- Export Button with Dropdown -->
+                <div class="export-dropdown" style="position: relative; display: inline-block;">
+                    <button id="export-btn" class="btn btn-secondary">
+                        📤 Export
+                    </button>
+                    <div id="export-menu" class="dropdown-menu hidden" style="position: absolute; top: 100%; left: 0; z-index: 1000; min-width: 160px; background: white; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+                        <button class="dropdown-item" data-export="csv" style="display: block; width: 100%; padding: 10px 15px; border: none; background: none; text-align: left; cursor: pointer;">📄 Export as CSV</button>
+                        <button class="dropdown-item" data-export="pdf" style="display: block; width: 100%; padding: 10px 15px; border: none; background: none; text-align: left; cursor: pointer;">📑 Export as PDF</button>
+                        <button class="dropdown-item" data-export="all" style="display: block; width: 100%; padding: 10px 15px; border: none; background: none; text-align: left; cursor: pointer;">📊 Export All Data</button>
+                    </div>
+                </div>
+                
+                <!-- Clear State Button (for debugging) -->
+                <button id="clear-state-btn" class="btn btn-icon" title="Clear saved state" style="margin-left: 10px;">
+                    🗑️
+                </button>
+            </div>
+            
+
+        </section>
+
+        <!-- Tab Navigation with History Dropdown -->
+        <section class="tab-nav">
+            <button class="tab-btn active" data-tab="current">Current Alerts</button>
+            
+            <!-- History Dropdown -->
+            <div class="history-dropdown" style="position: relative; display: inline-block;">
+                <button class="tab-btn" id="history-dropdown-btn" data-tab="history">
+                    View History ▼
+                </button>
+                <div id="history-menu" class="dropdown-menu hidden" style="position: absolute; top: 100%; left: 0; z-index: 1000; min-width: 320px; max-height: 400px; overflow-y: auto; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-top: 4px;">
+                    <div class="history-header" style="padding: 12px 15px; border-bottom: 1px solid #eee; background: #f8f9fa;">
+                        <strong>📂 Previous Sessions</strong>
+                        <button id="refresh-history" style="float: right; background: none; border: none; cursor: pointer; font-size: 14px;" title="Refresh history">🔄</button>
+                    </div>
+                    <div id="history-list" style="max-height: 320px; overflow-y: auto;">
+                        <div class="history-loading" style="padding: 20px; text-align: center; color: #666;">
+                            Loading history...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content Grid -->
+        <main class="main-content">
+            <!-- Charts Row -->
+            <section class="charts-row">
+                <!-- Severity Distribution (Donut) -->
+                <div class="chart-card">
+                    <h3 class="chart-title">Severity Distribution</h3>
+                    <div class="donut-container">
+                        <canvas id="severity-donut-chart"></canvas>
+                    </div>
+                    <div class="chart-legend" id="donut-legend">
+                        <div class="legend-item">
+                            <span class="legend-color" style="background: #4CAF50;"></span>
+                            <span class="legend-label">Neutral</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color" style="background: #FFC107;"></span>
+                            <span class="legend-label">Insult</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color" style="background: #F44336;"></span>
+                            <span class="legend-label">Harassment</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color" style="background: #9C27B0;"></span>
+                            <span class="legend-label">Other</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Daily Alerts Trend (Line) -->
+                <div class="chart-card chart-card-wide">
+                    <h3 class="chart-title">Daily Alerts Trend <span class="chart-subtitle">(Jan 1 - Apr 24, 2024)</span></h3>
+                    <div class="line-container">
+                        <canvas id="daily-line-chart"></canvas>
+                    </div>
+                    <div class="chart-navigation">
+                        <button class="nav-btn" id="prev-week">&lt;</button>
+                        <span class="nav-label">Week Navigation</span>
+                        <button class="nav-btn" id="next-week">&gt;</button>
+                    </div>
+                </div>
+
+                <!-- Monthly Trend (Bar) -->
+                <div class="chart-card">
+                    <h3 class="chart-title">Monthly Trend</h3>
+                    <div class="bar-container">
+                        <canvas id="monthly-bar-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Main Grid: Table + Sidebar -->
+            <section class="content-grid">
+                <!-- Messages Table -->
+                <div class="table-section">
+                    <div class="table-header">
+                        <h3 class="section-title">Group Chat Messages</h3>
+                        <div class="table-controls">
+                            <div class="search-box">
+                                <span class="search-icon">🔍</span>
+                                <input type="text" id="table-search" placeholder="Search messages...">
+                            </div>
+                            <div id="results-count" style="font-size: 14px; color: #666; padding: 8px 12px; background: #f5f5f5; border-radius: 8px;">
+                                <span id="filtered-count">0</span> of <span id="total-count">0</span> messages
+                            </div>
+                            <button class="btn btn-icon" id="filter-table-btn">
+                                <span>Filter</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="table-wrapper">
+                        <table class="data-table" id="messages-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" data-sort="date">Date</th>
+                                    <th class="sortable" data-sort="student">Student ID</th>
+                                    <th>Message</th>
+                                    <th>Platform</th>
+                                    <th class="sortable" data-sort="severity">Severity</th>
+                                    <th class="sortable" data-sort="score">Score ▼</th>
+                                    <th class="sortable" data-sort="confidence">Confidence ▼</th>
+                                </tr>
+                            </thead>
+                            <tbody id="messages-tbody">
+                                <!-- Rows populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <div class="pagination">
+                        <button class="page-btn" id="prev-page">&lt; Previous</button>
+                        <div class="page-numbers" id="page-numbers">
+                            <button class="page-num active">1</button>
+                            <button class="page-num">2</button>
+                            <button class="page-num">3</button>
+                            <button class="page-num">4</button>
+                            <span class="page-ellipsis">..</span>
+                            <span class="page-ellipsis">..</span>
+                            <button class="page-num">10</button>
+                        </div>
+                        <button class="page-btn" id="next-page">Next &gt;</button>
+                    </div>
+                </div>
+
+                <!-- Right Sidebar -->
+                <aside class="sidebar">
+                    <!-- Intervention Suggestions - Dynamic -->
+                    <div class="sidebar-card intervention-card" id="intervention-section">
+                        <h3 class="sidebar-title">Intervention Suggestions</h3>
+                        <div class="alert-banner high-severity hidden" id="severity-alert-banner">
+                            <span class="alert-icon">⚠️</span>
+                            <span class="alert-text" id="alert-banner-text">High Severity Alert</span>
+                        </div>
+                        <div class="suggestion-content" id="intervention-content">
+                            <p class="suggestion-label">Suggested Action:</p>
+                            <ul class="suggestion-list" id="suggestion-list">
+                                <li class="suggestion-item safe">
+                                    <span class="bullet green"></span>
+                                    No action needed
+                                </li>
+                            </ul>
+                            <div class="intervention-stats" id="intervention-stats" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; font-size: 12px; color: #666;">
+                                <!-- Stats will be populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Audit & Compliance Log -->
+                    <div class="sidebar-card audit-card">
+                        <h3 class="sidebar-title">Audit & Compliance Log</h3>
+                        <ul class="audit-list" id="audit-log">
+                            <li class="audit-item">
+                                <span class="audit-icon">📋</span>
+                                <span class="audit-text">Exported report</span>
+                                <span class="audit-time">10:32 AM</span>
+                            </li>
+                            <li class="audit-item">
+                                <span class="audit-icon">📋</span>
+                                <span class="audit-text">Viewed threat</span>
+                                <span class="audit-time">10:35 AM</span>
+                            </li>
+                        </ul>
+                    </div>
+                </aside>
+            </section>
+        </main>
+
+        <!-- Message Detail Modal -->
+        <div class="modal-overlay hidden" id="message-modal">
+            <div class="modal-content">
+                <button class="modal-close" id="close-modal">&times;</button>
+                <h2 class="modal-title">Message Details</h2>
+                <div class="modal-body">
+                    <!-- User and Date Info -->
+                    <div class="detail-row-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">👤 Student ID:</span>
+                            <span class="detail-value" id="modal-student-id">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">📅 Date:</span>
+                            <span class="detail-value" id="modal-date">-</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Message -->
+                    <div class="detail-row">
+                        <span class="detail-label">💬 Message:</span>
+                        <p class="detail-value message-full" id="modal-message"></p>
+                    </div>
+                    
+                    <!-- Platform and Severity -->
+                    <div class="detail-row-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">📱 Platform:</span>
+                            <span class="detail-value" id="modal-platform">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">⚠️ Severity:</span>
+                            <span class="severity-badge" id="modal-severity"></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Prediction and Confidence -->
+                    <div class="detail-row-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">🎯 Prediction:</span>
+                            <span class="detail-value" id="modal-score">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">📊 Confidence:</span>
+                            <span class="detail-value confidence-badge" id="modal-confidence">-</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Model -->
+                    <div class="detail-row">
+                        <span class="detail-label">🤖 Model:</span>
+                        <span class="detail-value" id="modal-model">BERT</span>
+                    </div>
+                    
+                    <!-- Explanation -->
+                    <div class="detail-row">
+                        <span class="detail-label">📝 Analysis:</span>
+                        <p class="detail-value explanation-text" id="modal-explanation"></p>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" id="modal-dismiss">Dismiss</button>
+                    <button class="btn btn-primary" id="modal-escalate">Escalate</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CSV Upload Modal -->
+        <div class="modal-overlay hidden" id="csv-upload-modal">
+            <div class="modal-content modal-large">
+                <button class="modal-close" id="close-csv-modal">&times;</button>
+                <h2 class="modal-title">📁 Upload Chat CSV for Analysis</h2>
+                
+                <div class="modal-body">
+                    <!-- Upload Section -->
+                    <div class="upload-section" id="upload-section">
+                        <div class="upload-dropzone" id="dropzone">
+                            <div class="dropzone-content">
+                                <span class="dropzone-icon">📄</span>
+                                <p class="dropzone-text">Drag & drop your CSV or TXT file here</p>
+                                <p class="dropzone-subtext">or click to browse</p>
+                                <input type="file" id="csv-file-input" accept=".csv,.txt" hidden>
+                            </div>
+                        </div>
+                        
+                        <div class="upload-info">
+                            <h4>📋 File Requirements:</h4>
+                            <ul>
+                                <li>CSV (.csv) or Text (.txt) format</li>
+                                <li>UTF-8 encoding</li>
+                                <li>Max 10MB file size</li>
+                                <li>Max 1000 rows per upload</li>
+                                <li>For CSV: column with text/messages</li>
+                                <li>For TXT: one message per line</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Preview Section (shown after file selection) -->
+                    <div class="preview-section hidden" id="preview-section">
+                        <div class="file-info">
+                            <span class="file-icon">📄</span>
+                            <span class="file-name" id="selected-file-name">filename.csv</span>
+                            <span class="file-size" id="selected-file-size">(0 KB)</span>
+                            <button class="btn btn-icon btn-remove" id="remove-file">✕</button>
+                        </div>
+                        
+                        <div class="preview-controls">
+                            <label class="form-label">
+                                Model:
+                                <select id="model-select" class="filter-select">
+                                    <option value="bert">BERT (Best Accuracy)</option>
+                                    <option value="mbert">mBERT (Multilingual)</option>
+                                    <option value="indicbert">IndicBERT (Indian Languages)</option>
+                                    <option value="baseline">Baseline (Fastest)</option>
+                                </select>
+                            </label>
+                            
+                            <label class="form-label">
+                                Text Column:
+                                <select id="text-column-select" class="filter-select">
+                                    <option value="">Auto-detect</option>
+                                </select>
+                            </label>
+                        </div>
+                        
+                        <div class="preview-table-container">
+                            <h4>📊 Preview (First 5 rows):</h4>
+                            <div class="table-wrapper">
+                                <table class="data-table preview-table" id="preview-table">
+                                    <thead id="preview-thead"></thead>
+                                    <tbody id="preview-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Processing Section -->
+                    <div class="processing-section hidden" id="processing-section">
+                        <div class="processing-spinner"></div>
+                        <p class="processing-text">Analyzing messages with ML model...</p>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                        <p class="progress-text" id="progress-text">Processing...</p>
+                    </div>
+                    
+                    <!-- Results Section -->
+                    <div class="results-section hidden" id="results-section">
+                        <div class="results-summary">
+                            <h4>✅ Analysis Complete</h4>
+                            <div class="summary-stats">
+                                <div class="summary-stat">
+                                    <span class="stat-value" id="result-total">0</span>
+                                    <span class="stat-label">Total Messages</span>
+                                </div>
+                                <div class="summary-stat stat-danger">
+                                    <span class="stat-value" id="result-cyberbullying">0</span>
+                                    <span class="stat-label">Cyberbullying</span>
+                                </div>
+                                <div class="summary-stat stat-success">
+                                    <span class="stat-value" id="result-safe">0</span>
+                                    <span class="stat-label">Safe</span>
+                                </div>
+                                <div class="summary-stat">
+                                    <span class="stat-value" id="result-time">0ms</span>
+                                    <span class="stat-label">Processing Time</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="severity-breakdown">
+                            <h4>Severity Distribution:</h4>
+                            <div class="severity-bars">
+                                <div class="severity-bar-item">
+                                    <span class="severity-label">Critical</span>
+                                    <div class="severity-bar critical">
+                                        <div class="bar-fill" id="bar-critical"></div>
+                                    </div>
+                                    <span class="severity-count" id="count-critical">0</span>
+                                </div>
+                                <div class="severity-bar-item">
+                                    <span class="severity-label">High</span>
+                                    <div class="severity-bar high">
+                                        <div class="bar-fill" id="bar-high"></div>
+                                    </div>
+                                    <span class="severity-count" id="count-high">0</span>
+                                </div>
+                                <div class="severity-bar-item">
+                                    <span class="severity-label">Medium</span>
+                                    <div class="severity-bar medium">
+                                        <div class="bar-fill" id="bar-medium"></div>
+                                    </div>
+                                    <span class="severity-count" id="count-medium">0</span>
+                                </div>
+                                <div class="severity-bar-item">
+                                    <span class="severity-label">Low</span>
+                                    <div class="severity-bar low">
+                                        <div class="bar-fill" id="bar-low"></div>
+                                    </div>
+                                    <span class="severity-count" id="count-low">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Error Section -->
+                    <div class="error-section hidden" id="error-section">
+                        <div class="error-icon">❌</div>
+                        <p class="error-message" id="error-message">An error occurred</p>
+                        <button class="btn btn-secondary" id="retry-btn">Try Again</button>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" id="cancel-upload">Cancel</button>
+                    <button class="btn btn-primary" id="analyze-btn" disabled>
+                        🔍 Analyze Messages
+                    </button>
+                    <button class="btn btn-success hidden" id="load-results-btn">
+                        📊 Load Results to Dashboard
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="js/api_client.js"></script>
+    <script src="js/csv_upload.js"></script>
+    <script src="js/chart_config.js"></script>
+    <script src="js/graphs/pie_chart.js"></script>
+    <script src="js/graphs/line_chart.js"></script>
+    <script src="js/graphs/bar_chart.js"></script>
+    <script src="js/graphs/stats_cards.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

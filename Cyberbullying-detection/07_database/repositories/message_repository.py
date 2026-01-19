@@ -25,14 +25,20 @@ class MessageRepository:
         text: str,
         source: str = "api",
         language: str = "en",
-        metadata: dict = None
+        metadata: dict = None,
+        extra_data: dict = None,
     ) -> Message:
-        """Create a new message."""
+        """Create a new message.
+
+        Accepts both `metadata` (legacy) and `extra_data` (current model field).
+        If both are provided, `extra_data` takes precedence.
+        """
+        _data = extra_data if extra_data is not None else metadata
         message = Message(
             text=text,
             source=source,
             language=language,
-            metadata=metadata
+            extra_data=_data,
         )
         self.db.add(message)
         self.db.commit()

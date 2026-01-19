@@ -68,6 +68,10 @@ class StatisticsResponse(BaseModel):
     language_distribution: Dict[str, int]
     daily_counts: List[Dict[str, Any]]
     model_usage: Dict[str, int]
+    # Distribution of predictions by label (e.g., neutral, insult, harassment)
+    label_distribution: Dict[str, int] = Field(default_factory=dict)
+    # Aggregated monthly trend of predictions for bar chart
+    monthly_trend: Dict[str, int] = Field(default_factory=dict)
 
 
 class FeedbackResponse(BaseModel):

@@ -23,7 +23,12 @@ _stats_store = {
     "not_cyberbullying_count": 0,
     "severity_distribution": {"low": 0, "medium": 0, "high": 0, "critical": 0},
     "language_distribution": {"english": 0, "kannada": 0, "code_mixed": 0},
+    # Label distribution for donut chart when DB is not available
+    "label_distribution": {},
+    # Cached daily counts for fallback mode
     "daily_counts": [],
+    # Optional cached monthly trend when DB is not available
+    "monthly_trend": {},
     "model_usage": {"bert": 0, "mbert": 0, "indicbert": 0, "baseline": 0}
 }
 
@@ -73,6 +78,13 @@ def update_stats(prediction_result: dict, model_type: str = "bert"):
         _stats_store["cyberbullying_count"] += 1
     else:
         _stats_store["not_cyberbullying_count"] += 1
+
+    # Update label distribution if prediction label is available
+    label = prediction_result.get("prediction")
+    if label:
+        if "label_distribution" not in _stats_store or _stats_store["label_distribution"] is None:
+            _stats_store["label_distribution"] = {}
+        _stats_store["label_distribution"][label] = _stats_store["label_distribution"].get(label, 0) + 1
     
     # Update model usage
     if model_type in _stats_store["model_usage"]:
@@ -109,7 +121,7 @@ async def get_statistics(
                 }
                 for d in db_stats.get("daily_stats", [])
             ]
-            
+
             # If no daily data, generate empty structure
             if not daily_counts:
                 today = datetime.now()
@@ -121,7 +133,19 @@ async def get_statistics(
                     }
                     for i in range(days - 1, -1, -1)
                 ]
-            
+
+            # Build monthly trend from daily stats
+            monthly_trend: dict[str, int] = {}
+            for d in daily_counts:
+                try:
+                    dt = datetime.strptime(d["date"], "%Y-%m-%d")
+                    month_key = dt.strftime("%b")  # e.g., Jan, Feb
+                except Exception:
+                    # If date format is unexpected, skip aggregation for safety
+                    continue
+
+                monthly_trend[month_key] = monthly_trend.get(month_key, 0) + int(d.get("predictions", 0))
+
             return StatisticsResponse(
                 total_predictions=db_stats["total_predictions"],
                 cyberbullying_count=db_stats["cyberbullying_count"],
@@ -129,7 +153,9 @@ async def get_statistics(
                 severity_distribution=_stats_store["severity_distribution"],  # Not tracked in DB yet
                 language_distribution=_stats_store["language_distribution"],  # Not tracked in DB yet
                 daily_counts=daily_counts,
-                model_usage=db_stats.get("model_usage", _stats_store["model_usage"])
+                model_usage=db_stats.get("model_usage", _stats_store["model_usage"]),
+                label_distribution=db_stats.get("label_distribution", {}),
+                monthly_trend=monthly_trend,
             )
         
         # Fallback to in-memory stats
@@ -143,15 +169,29 @@ async def get_statistics(
                 }
                 for i in range(days - 1, -1, -1)
             ]
-        
+
+        # Build monthly trend from fallback daily counts
+        fallback_daily = _stats_store["daily_counts"][ -days: ]
+        monthly_trend: dict[str, int] = {}
+        for d in fallback_daily:
+            try:
+                dt = datetime.strptime(d["date"], "%Y-%m-%d")
+                month_key = dt.strftime("%b")
+            except Exception:
+                continue
+
+            monthly_trend[month_key] = monthly_trend.get(month_key, 0) + int(d.get("predictions", 0))
+
         return StatisticsResponse(
             total_predictions=_stats_store["total_predictions"],
             cyberbullying_count=_stats_store["cyberbullying_count"],
             not_cyberbullying_count=_stats_store["not_cyberbullying_count"],
             severity_distribution=_stats_store["severity_distribution"],
             language_distribution=_stats_store["language_distribution"],
-            daily_counts=_stats_store["daily_counts"][-days:],
-            model_usage=_stats_store["model_usage"]
+            daily_counts=fallback_daily,
+            model_usage=_stats_store["model_usage"],
+            label_distribution=_stats_store.get("label_distribution", {}),
+            monthly_trend=monthly_trend,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve statistics: {str(e)}")
@@ -167,7 +207,9 @@ async def reset_statistics():
         "not_cyberbullying_count": 0,
         "severity_distribution": {"low": 0, "medium": 0, "high": 0, "critical": 0},
         "language_distribution": {"english": 0, "kannada": 0, "code_mixed": 0},
+        "label_distribution": {},
         "daily_counts": [],
+        "monthly_trend": {},
         "model_usage": {"bert": 0, "mbert": 0, "indicbert": 0, "baseline": 0}
     }
     return {"message": "Statistics reset successfully"}

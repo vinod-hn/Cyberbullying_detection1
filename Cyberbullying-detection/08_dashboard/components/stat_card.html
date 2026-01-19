@@ -1,0 +1,52 @@
+<!-- Stat Card Template -->
+<template id="stat-card-template">
+    <div class="stat-card">
+        <div class="stat-header">
+            <span class="stat-icon">{icon}</span>
+            <h4 class="stat-title">{title}</h4>
+            <span class="stat-count">{count}</span>
+        </div>
+        <ul class="stat-list" id="{listId}">
+            <!-- Dynamic content -->
+        </ul>
+    </div>
+</template>
+
+<!-- Stat Item Template -->
+<template id="stat-item-template">
+    <li class="stat-item priority-{priority}">
+        <span class="stat-item-time">{time}</span>
+        <span class="stat-item-text">{text}</span>
+        <span class="stat-item-badge severity-{severity}">{severity}</span>
+    </li>
+</template>
+
+<!-- Audit Item Template -->
+<template id="audit-item-template">
+    <li class="audit-item">
+        <span class="audit-icon">{icon}</span>
+        <span class="audit-text">{text}</span>
+        <span class="audit-time">{time}</span>
+    </li>
+</template>
+
+<!--
+Usage:
+function createStatCard(title, icon, count, listId) {
+    const template = document.getElementById('stat-card-template').innerHTML;
+    return template
+        .replace('{title}', title)
+        .replace('{icon}', icon)
+        .replace('{count}', count)
+        .replace('{listId}', listId);
+}
+
+function createStatItem(time, text, severity, priority) {
+    const template = document.getElementById('stat-item-template').innerHTML;
+    return template
+        .replace('{time}', time)
+        .replace('{text}', text)
+        .replace(/{severity}/g, severity)
+        .replace('{priority}', priority || 'normal');
+}
+-->

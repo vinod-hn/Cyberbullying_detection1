@@ -24,6 +24,7 @@ import json
 import pickle
 import logging
 import re
+import csv
 from typing import Dict, Any, Optional, List, Union
 from pathlib import Path
 
@@ -32,6 +33,10 @@ logger = logging.getLogger(__name__)
 # Get project paths
 PROJECT_ROOT = Path(__file__).parent.parent
 MODELS_DIR = PROJECT_ROOT / '03_models' / 'saved_models'
+
+# Lexicon paths (used for conservative sanity filtering)
+LEXICON_DIR = PROJECT_ROOT / '00_data' / 'lexicon'
+_TOXIC_TERMS_CACHE: Optional[set] = None
 
 # Optional imports
 try:
@@ -206,6 +211,210 @@ class CyberbullyingDetector:
                     self.test_metrics = json.load(f)
                 logger.info(f"Model metrics loaded from {metrics_filename}: {self.test_metrics}")
                 break
+
+    @staticmethod
+    def _load_toxic_terms() -> set:
+        """Load a set of toxic/profanity terms from bundled lexicon files.
+
+        This is used only for a conservative sanity filter to reduce false positives
+        on short/greeting texts (common in chat logs and TXT uploads).
+        """
+        global _TOXIC_TERMS_CACHE
+        if _TOXIC_TERMS_CACHE is not None:
+            return _TOXIC_TERMS_CACHE
+
+        terms: set = set()
+
+        # Small built-in list as a fallback if lexicon files are missing.
+        builtin = {
+            'kill', 'die', 'beat', 'hate', 'loser', 'idiot', 'stupid', 'dumb',
+            'ugly', 'slut', 'whore', 'bitch', 'asshole', 'moron', 'jerk'
+        }
+        terms.update(builtin)
+
+        def read_csv_terms(path: Path, columns: List[str]) -> None:
+            if not path.exists():
+                return
+            try:
+                with open(path, 'r', encoding='utf-8', newline='') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        for col in columns:
+                            val = (row.get(col) or '').strip().lower()
+                            if val:
+                                terms.add(val)
+            except Exception as e:
+                logger.warning(f"Failed to read lexicon file {path}: {e}")
+
+        # English + Kannada profanity lists
+        read_csv_terms(LEXICON_DIR / 'profanity_english.csv', ['term'])
+        read_csv_terms(LEXICON_DIR / 'profanity_kannada.csv', ['term', 'transliteration'])
+
+        _TOXIC_TERMS_CACHE = terms
+        return _TOXIC_TERMS_CACHE
+
+    # ─────────────────────────────────────────────────────────────────────────────
+    # POSITIVE / BENIGN INDICATORS (used to reduce false positives)
+    # ─────────────────────────────────────────────────────────────────────────────
+    _POSITIVE_WORDS = {
+        # Greetings
+        'hi', 'hello', 'hey', 'hii', 'hiii', 'hai', 'helo', 'heyy',
+        # Farewells
+        'bye', 'goodbye', 'goodnight', 'gn', 'tc', 'cya', 'see', 'later',
+        # Acknowledgements
+        'ok', 'okay', 'k', 'kk', 'yes', 'no', 'yep', 'nope', 'ya', 'yaa', 'nah',
+        'hmm', 'hm', 'hmmmm', 'umm', 'um', 'ahh', 'ooh', 'oops', 'lol', 'haha', 'hehe',
+        # Thanks / Sorry
+        'thanks', 'thank', 'thanku', 'tq', 'ty', 'thx', 'sorry', 'sry', 'apologies',
+        # Positive adjectives
+        'good', 'great', 'nice', 'fine', 'cool', 'awesome', 'amazing', 'wonderful',
+        'fantastic', 'excellent', 'beautiful', 'lovely', 'sweet', 'cute', 'best',
+        'super', 'brilliant', 'perfect', 'happy', 'glad', 'pleased', 'excited',
+        # Affection
+        'love', 'loved', 'miss', 'missed', 'care', 'friend', 'bro', 'sis', 'dear',
+        'buddy', 'dude', 'man', 'guys', 'team', 'fam', 'family',
+        # Polite
+        'please', 'pls', 'plz', 'welcome', 'congrats', 'congratulations', 'well',
+        # Common verbs (neutral)
+        'come', 'go', 'send', 'call', 'tell', 'ask', 'know', 'think', 'need', 'want',
+        'wait', 'meet', 'join', 'share', 'help', 'try', 'check', 'see', 'look',
+        # Question words
+        'what', 'when', 'where', 'why', 'how', 'who', 'which',
+        # Time / place
+        'today', 'tomorrow', 'now', 'later', 'morning', 'evening', 'night', 'time',
+        'home', 'class', 'college', 'school', 'office', 'work',
+        # Misc safe
+        'food', 'lunch', 'dinner', 'movie', 'song', 'game', 'study', 'exam', 'test',
+    }
+
+    _BENIGN_PHRASES = [
+        # Greetings
+        r"^(hi+|he+y+|hello+|hai)[\s,!.?]*(\w{2,20})?[\s!.?]*$",
+        r"^good\s*(morning|afternoon|evening|night|day)[\s,!.?]*(\w{2,20})?[\s!.?]*$",
+        # Farewells
+        r"^(bye+|goodbye|see\s*(you|ya|u)|tc|take\s*care|gn|good\s*night)[\s!.?]*$",
+        # How are you variants
+        r"^(how\s*(are|r)\s*(you|u)|hru|how('?s| is)\s*(it|everything|life|u)|what'?s\s*up|wassup|sup)[\s?!.]*$",
+        # I am / I'm introductions
+        r"^(i\s*am|i'm|im|this\s*is)\s+\w{2,25}[\s!.?,]*$",
+        # I am fine/good etc
+        r"^(i\s*am|i'm|im)\s+(good|fine|ok|okay|great|doing\s*well|doing\s*good|alright)[\s!.?,]*(\w{2,20})?[\s!.?,]*$",
+        # Simple acknowledgements
+        r"^(ok+|okay+|k+|yes+|no+|ya+|yep|nope|nah|sure|alright|fine|done|got\s*it|noted|understood)[\s!.?,]*$",
+        # Thanks / sorry
+        r"^(thanks?|thanku|thank\s*you|ty|thx|tq|sorry|sry|apolog(y|ies)|my\s*bad)[\s!.?,]*(\w{2,20})?[\s!.?,]*$",
+        # Simple questions
+        r"^(what|when|where|why|how|who|which)[\s'?\w]{0,30}\?*$",
+        # Compliments / positive
+        r"^(you\s*(are|r)|u\s*r|that'?s|it'?s)\s*(good|great|nice|awesome|amazing|wonderful|cool|sweet|the\s*best)[\s!.?,]*$",
+        # Tell me / send me
+        r"^(tell|send|share|show|give)\s*(me|us)[\s\w]{0,25}[\s!.?,]*$",
+        # Let's / shall we
+        r"^(let'?s|shall\s*we|can\s*we|we\s*can)[\s\w]{0,30}[\s!.?,]*$",
+        # Coming / going
+        r"^(i'?m|i\s*am|we\s*are|we're)\s*(coming|going|leaving|here|there|on\s*my\s*way)[\s!.?,]*$",
+        # Miss you / love you
+        r"^(i\s*)?(miss|love|like)\s*(you|u|this|it|that)[\s!.?,]*$",
+        # See you
+        r"^see\s*(you|ya|u)\s*(soon|later|tomorrow|there)?[\s!.?,]*$",
+        # Wait / hold on
+        r"^(wait|hold\s*on|one\s*sec|just\s*a\s*moment|brb|be\s*right\s*back)[\s!.?,]*$",
+        # Names / addressing (common Indian names often flagged)
+        r"^(hey|hi|hello)?\s*[a-z]{2,15}[\s,!.?]*$",
+        # Short emoji-only or laughter
+        r"^(ha+|he+|lo+l+|lmao|rofl|xd+|[:;][-']?[)DPp])+[\s!.?,]*$",
+        # Numbers / times
+        r"^[\d:.\s]+\s*(am|pm|o'?clock)?[\s!.?,]*$",
+        # Single word safe
+        r"^(nice|cool|great|good|okay|sure|yeah|yep|nope|done|same|true|right|correct|agreed)[\s!.?,]*$",
+    ]
+
+    @classmethod
+    def _has_positive_sentiment(cls, tokens: List[str]) -> bool:
+        """Check if message has positive/neutral sentiment indicators."""
+        if not tokens:
+            return False
+        positive_count = sum(1 for t in tokens if t in cls._POSITIVE_WORDS)
+        return positive_count >= 1 and positive_count >= len(tokens) * 0.3
+
+    @classmethod
+    def _matches_benign_pattern(cls, text_lower: str) -> bool:
+        """Check if text matches any known benign pattern."""
+        t = re.sub(r'\s+', ' ', (text_lower or '').strip())
+        if not t:
+            return True
+        for pattern in cls._BENIGN_PHRASES:
+            if re.match(pattern, t, re.IGNORECASE):
+                return True
+        return False
+
+    def _apply_sanity_filter(self, original_text: str, processed_text: str, result: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply AGGRESSIVE post-processing to reduce false positives to near zero.
+
+        CORE PRINCIPLE: Only flag as cyberbullying if there is EXPLICIT toxic content.
+        If no clear toxic/threat/profane words are found, classify as NEUTRAL.
+        
+        This ensures:
+        - Greetings, questions, normal chat → NEUTRAL
+        - Only messages with actual bad words/threats → flagged
+        """
+        try:
+            pred = (result.get('prediction') or '').strip().lower()
+            if not pred or pred == 'neutral':
+                return result
+
+            text_lower = (processed_text or '').strip().lower()
+            tokens = re.findall(r"[\w']+", text_lower)
+            word_count = len(tokens)
+
+            # ══════════════════════════════════════════════════════════════════
+            # STRICT RULE: Only trust model if EXPLICIT toxic content is present
+            # ══════════════════════════════════════════════════════════════════
+            
+            toxic_terms = self._load_toxic_terms()
+            has_toxic_token = any(tok in toxic_terms for tok in tokens)
+            
+            # Expanded threat patterns - must match at least one to be flagged
+            threat_patterns = [
+                r'\b(kill|die|death|murder|beat|punch|slap|hit|hurt|attack|stab|shoot)\b',
+                r'\b(hate\s*(you|u)|destroy|ruin|expose|humiliate)\b',
+                r'\b(shut\s*up|get\s*lost|go\s*(away|die|to\s*hell)|fuck\s*(off|you))\b',
+                r'\b(loser|idiot|stupid|dumb|ugly|fat|pathetic|disgusting|worthless|useless)\b',
+                r'\b(nobody\s*likes|everyone\s*hates|no\s*friends|kill\s*yourself)\b',
+                r'\b(bitch|slut|whore|bastard|asshole|retard|moron)\b',
+                r'\b(trash|garbage|scum|vermin|pest|parasite)\b',
+                r'\b(disappear|leave|get\s*out|go\s*away).*\b(nobody|no\s*one)\b',
+            ]
+            has_threat_pattern = any(re.search(p, text_lower) for p in threat_patterns)
+
+            # ── If explicit toxicity found → trust model ──
+            if has_toxic_token or has_threat_pattern:
+                return result
+
+            # ══════════════════════════════════════════════════════════════════
+            # NO TOXIC CONTENT FOUND → FORCE NEUTRAL
+            # This is aggressive but eliminates false positives
+            # ══════════════════════════════════════════════════════════════════
+            
+            return self._force_neutral(result)
+
+        except Exception as e:
+            logger.warning(f"Sanity filter failed: {e}")
+            return result
+
+    def _force_neutral(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """Force a result to neutral classification."""
+        probs = result.get('probabilities') or {}
+        neutral_prob = probs.get('neutral', 0.6) if isinstance(probs, dict) else 0.6
+        
+        result['prediction'] = 'neutral'
+        result['confidence'] = max(0.55, min(float(neutral_prob) if neutral_prob else 0.6, 0.95))
+        
+        if isinstance(probs, dict) and 'neutral' in probs:
+            probs['neutral'] = result['confidence']
+            result['probabilities'] = probs
+        
+        return result
     
     @staticmethod
     def preprocess_text(text: str) -> str:
@@ -223,7 +432,8 @@ class CyberbullyingDetector:
         if pd.isna(text):
             return ""
         
-        text = str(text).lower()
+        # Strip BOM / odd leading markers that can show up in TXT exports
+        text = str(text).lstrip('\ufeff').lstrip().lower()
         
         # Convert emojis to text
         if EMOJI_AVAILABLE:
@@ -272,6 +482,10 @@ class CyberbullyingDetector:
             results = self._predict_baseline(processed_texts, return_probabilities)
         else:
             results = self._predict_transformer(processed_texts, return_probabilities)
+
+        # Apply conservative sanity filter (helps with short TXT uploads)
+        for i in range(len(results)):
+            results[i] = self._apply_sanity_filter(texts[i], processed_texts[i], results[i])
         
         # Add original texts and boolean flag
         # "neutral" class means NOT cyberbullying, all other classes are cyberbullying types

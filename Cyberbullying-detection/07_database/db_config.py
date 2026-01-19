@@ -85,7 +85,11 @@ def init_db():
     Call this at application startup.
     """
     # Import models to ensure they're registered with Base
-    from . import models  # noqa: F401
+    try:
+        from . import models  # noqa: F401
+    except ImportError:
+        # Fallback for direct imports when package context isn't available
+        import models  # type: ignore  # noqa: F401
     
     Base.metadata.create_all(bind=engine)
     print(f"Database initialized at: {DATABASE_PATH}")
@@ -119,7 +123,10 @@ def get_test_db():
     TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
     
     # Import and create tables
-    from . import models  # noqa: F401
+    try:
+        from . import models  # noqa: F401
+    except ImportError:
+        import models  # type: ignore  # noqa: F401
     Base.metadata.create_all(bind=test_engine)
     
     return TestSessionLocal

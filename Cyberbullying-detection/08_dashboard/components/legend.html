@@ -1,0 +1,55 @@
+<!-- Legend Template for Charts -->
+<template id="legend-template">
+    <div class="custom-legend">
+        <!-- Legend items will be inserted dynamically -->
+    </div>
+</template>
+
+<!-- Legend Item Template -->
+<template id="legend-item-template">
+    <div class="legend-item" data-index="{index}">
+        <span class="legend-color" style="background-color: {color};"></span>
+        <span class="legend-label">{label}</span>
+        <span class="legend-value">{value}%</span>
+    </div>
+</template>
+
+<!-- Inline Legend (Horizontal) Template -->
+<template id="inline-legend-template">
+    <div class="inline-legend">
+        {items}
+    </div>
+</template>
+
+<template id="inline-legend-item-template">
+    <span class="inline-legend-item">
+        <span class="legend-dot" style="background-color: {color};"></span>
+        {label}
+    </span>
+</template>
+
+<!--
+Usage:
+const LegendBuilder = {
+    buildVertical: function(items) {
+        const template = document.getElementById('legend-item-template').innerHTML;
+        return items.map((item, i) => template
+            .replace('{index}', i)
+            .replace('{color}', item.color)
+            .replace('{label}', item.label)
+            .replace('{value}', item.value)
+        ).join('');
+    },
+
+    buildInline: function(items) {
+        const itemTemplate = document.getElementById('inline-legend-item-template').innerHTML;
+        const itemsHtml = items.map(item => itemTemplate
+            .replace('{color}', item.color)
+            .replace('{label}', item.label)
+        ).join('');
+
+        const template = document.getElementById('inline-legend-template').innerHTML;
+        return template.replace('{items}', itemsHtml);
+    }
+};
+-->
